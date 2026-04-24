@@ -1,0 +1,6 @@
+# Build
+mdpress
+*.exe
+
+# OS
+.DS_Store
