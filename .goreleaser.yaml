@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# GoReleaser configuration for mdpress CLI
+# Documentation: https://goreleaser.com
+
+version: 2
+
+project_name: mdpress
+
+builds:
+  - id: mdpress
+    binary: mdpress
+    main: ./main.go
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/skel-tech/mdpress/cmd.version={{.Version}}
+      - -X github.com/skel-tech/mdpress/cmd.commit={{.Commit}}
+      - -X github.com/skel-tech/mdpress/cmd.date={{.Date}}
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    # Only include LICENSE and README files
+    # AI tooling files (.claude/, .conductor/) are excluded by not being listed
+    files:
+      - LICENSE*
+      - README*
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+release:
+  github:
+    owner: Skel-Tech
+    name: mdpress
+  prerelease: auto
+  # Disable auto-generated changelog - use manual release notes
+  disable: false
+
+changelog:
+  disable: true
+
+brews:
+  - name: mdpress
+    repository:
+      owner: Skel-Tech
+      name: homebrew-mdpress
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/Skel-Tech/mdpress"
+    description: "Markdown to PDF presentation tool"
+    license: "MIT"
+    install: |
+      bin.install "mdpress"
+    test: |
+      system "#{bin}/mdpress", "version"
+
+# Exclude AI tooling directories from source archives
+source:
+  enabled: false
+
+# Snapshot configuration for testing
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"

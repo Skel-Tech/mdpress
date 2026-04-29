@@ -1,0 +1,62 @@
+{
+  "invoice_number": "INV-2024-0042",
+  "invoice_date": "2024-03-15",
+  "due_date": "2024-04-14",
+  "company": {
+    "name": "Stellar Design Co.",
+    "address": {
+      "street": "123 Creative Avenue",
+      "city": "San Francisco",
+      "state": "CA",
+      "zip": "94102"
+    },
+    "email": "billing@stellardesign.co"
+  },
+  "client": {
+    "name": "Acme Corporation",
+    "address": {
+      "street": "456 Enterprise Blvd",
+      "city": "Oakland",
+      "state": "CA",
+      "zip": "94612"
+    },
+    "email": "accounts@acmecorp.com"
+  },
+  "line_items": [
+    {
+      "description": "Brand Identity Design",
+      "quantity": 1,
+      "unit_price": "2500.00",
+      "amount": "2500.00"
+    },
+    {
+      "description": "Website Design (5 pages)",
+      "quantity": 5,
+      "unit_price": "800.00",
+      "amount": "4000.00"
+    },
+    {
+      "description": "Logo Variations",
+      "quantity": 3,
+      "unit_price": "350.00",
+      "amount": "1050.00"
+    },
+    {
+      "description": "Brand Guidelines Document",
+      "quantity": 1,
+      "unit_price": "750.00",
+      "amount": "750.00"
+    }
+  ],
+  "subtotal": "8300.00",
+  "discount": {
+    "description": "Loyalty Discount",
+    "amount": "415.00"
+  },
+  "tax_rate": "8.625",
+  "tax_amount": "680.18",
+  "total": "8565.18",
+  "notes": "All deliverables will be provided in vector format (AI, EPS, SVG) and raster format (PNG, JPG) upon final payment.",
+  "payment_instructions": "Please make payment via bank transfer to:\nBank: First National Bank\nAccount Name: Stellar Design Co.\nAccount Number: XXXX-XXXX-1234\nRouting: 021000021",
+  "paid": false
+}

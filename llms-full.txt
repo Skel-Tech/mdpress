@@ -1,0 +1,750 @@
+# mdpress - Complete LLM Reference
+
+> Turn Markdown and AI output into branded PDFs
+
+mdpress renders Markdown files to professionally formatted PDFs with branding support. This reference teaches language models how to author mdpress-compatible Markdown documents.
+
+---
+
+## Variable Syntax (Mustache Templating)
+
+Variables enable data-driven document generation. This is a Pro feature requiring the --data flag and Pro license.
+
+### Basic Interpolation
+
+Syntax: {{ variable }}
+
+Inserts the value of a variable. HTML entities are escaped by default.
+
+Example:
+  Template: Hello, {{ name }}!
+  Data: { "name": "World" }
+  Output: Hello, World!
+
+GOOD:
+  {{ client_name }}
+  {{ invoice_number }}
+  {{ date }}
+
+BAD:
+  {{client_name}}      <- works but less readable, prefer spaces
+  {{ CLIENT_NAME }}    <- case must match data exactly
+  {{ name | upper }}   <- filters not supported
+
+### Nested Object Access
+
+Syntax: {{ object.property }} or {{ object.nested.path }}
+
+Access properties within nested objects using dot notation.
+
+Example:
+  Template: Client: {{ client.name }}, City: {{ client.address.city }}
+  Data: { "client": { "name": "Acme", "address": { "city": "NYC" } } }
+  Output: Client: Acme, City: NYC
+
+GOOD:
+  {{ client.name }}
+  {{ client.address.city }}
+  {{ company.contact.email }}
+
+BAD:
+  {{ client['name'] }}         <- bracket notation not supported
+  {{ client?.name }}           <- optional chaining not supported
+
+### Loops/Sections
+
+Syntax: {{#items}}...{{/items}}
+
+Iterate over arrays. Inside the loop, use {{ . }} for the current item or access properties directly.
+
+Example with simple array:
+  Template:
+    Items:
+    {{#items}}
+    - {{ . }}
+    {{/items}}
+  Data: { "items": ["Apple", "Banana"] }
+  Output:
+    Items:
+    - Apple
+    - Banana
+
+Example with object array:
+  Template:
+    {{#products}}
+    - {{ name }}: ${{ price }}
+    {{/products}}
+  Data: { "products": [{ "name": "Widget", "price": "19.99" }] }
+  Output:
+    - Widget: $19.99
+
+GOOD:
+  {{#items}}
+  - {{ description }}: ${{ amount }}
+  {{/items}}
+
+BAD:
+  {{#items}}{{ . }}{{/items}}  <- works but hard to read
+  {% for item in items %}      <- Jinja syntax not supported
+  {{#items}}{{ items.name }}   <- inside loop, access properties directly
+
+### Conditionals
+
+Syntax: {{#condition}}...{{/condition}}
+
+Renders content only if the value is truthy (true, non-empty string, non-empty array).
+
+Example:
+  Template: {{#premium}}Premium Member{{/premium}}
+  Data: { "premium": true }
+  Output: Premium Member
+
+  Data: { "premium": false }
+  Output: (empty)
+
+GOOD:
+  {{#show_notes}}
+  ## Notes
+  {{ notes }}
+  {{/show_notes}}
+
+BAD:
+  {{#if show_notes}}     <- "if" is literal, not a keyword
+  {{#show_notes == true}}  <- comparison operators not supported
+
+### Inverted Conditionals
+
+Syntax: {{^condition}}...{{/condition}}
+
+Renders content only if the value is falsy (false, empty string, empty array, undefined).
+
+Example:
+  Template: {{^items}}No items found.{{/items}}
+  Data: { "items": [] }
+  Output: No items found.
+
+GOOD:
+  {{^paid}}
+  **Payment pending**
+  {{/paid}}
+
+BAD:
+  {{!paid}}              <- wrong syntax
+  {{^paid == false}}     <- comparison not supported
+
+### Unescaped Content
+
+Syntax: {{{ variable }}} (triple braces)
+
+Outputs content without HTML escaping. Use when your data contains intentional HTML/Markdown.
+
+Example:
+  Template: {{{ formatted_notes }}}
+  Data: { "formatted_notes": "**Bold** and *italic*" }
+  Output: **Bold** and *italic*
+
+GOOD:
+  {{{ html_content }}}
+  {{{ markdown_snippet }}}
+
+BAD:
+  {{{ user_input }}}     <- security risk if untrusted
+
+---
+
+## Directive Reference
+
+Directives control document layout and semantic structure. They use the {{@name}} syntax and must appear on their own line.
+
+### Parser Rules
+
+- Directive: starts with {{@ (e.g., {{@pagebreak}})
+- Variable: starts with {{ without @ (e.g., {{ name }})
+- Block directives have opening and closing tags: {{@name}}...{{/name}}
+- Self-closing directives stand alone: {{@pagebreak}}
+
+### Layout Directives
+
+#### {{@pagebreak}}
+
+Forces a page break at this location.
+
+Type: Self-closing
+
+GOOD:
+  ## Chapter 1
+
+  Content here...
+
+  {{@pagebreak}}
+
+  ## Chapter 2
+
+  More content...
+
+BAD:
+  Content {{@pagebreak}} more content   <- must be on own line
+  {{@ pagebreak }}                       <- no spaces inside tag
+  {{@page-break}}                        <- wrong name
+
+#### {{@columns}}...{{/columns}}
+
+Renders enclosed content in a multi-column layout.
+
+Type: Block
+
+GOOD:
+  {{@columns}}
+  **Left Column**
+
+  Content for the left side.
+
+  ---
+
+  **Right Column**
+
+  Content for the right side.
+  {{/columns}}
+
+BAD:
+  {{@columns}}Left{{/columns}}{{@columns}}Right{{/columns}}  <- use one block
+  {{@columns cols=3}}                                          <- attributes not supported
+
+#### {{@toc}}
+
+Generates a table of contents based on document headings.
+
+Type: Self-closing
+
+GOOD:
+  # Document Title
+
+  {{@toc}}
+
+  ## Introduction
+  ...
+
+  ## Methods
+  ...
+
+BAD:
+  {{@toc depth=2}}       <- attributes not supported
+  {{@tableofcontents}}   <- wrong name
+
+### Semantic Directives
+
+#### {{@note}}...{{/note}}
+
+Renders content as a note callout box. Use for helpful tips or additional information.
+
+Type: Block
+
+GOOD:
+  {{@note}}
+  Remember to save your work frequently.
+  {{/note}}
+
+BAD:
+  {{@note}}Inline note{{/note}}        <- should be on own lines
+  > **Note:** Remember to save...       <- use directive instead
+
+#### {{@warning}}...{{/warning}}
+
+Renders content as a warning callout box. Use for cautions or important alerts.
+
+Type: Block
+
+GOOD:
+  {{@warning}}
+  This action cannot be undone. Please backup your data first.
+  {{/warning}}
+
+BAD:
+  {{@warning}}Danger!{{/warning}}      <- should be on own lines
+  **WARNING:** This action...           <- use directive instead
+
+#### {{@highlight}}...{{/highlight}}
+
+Renders content with visual emphasis/highlighting.
+
+Type: Block
+
+GOOD:
+  {{@highlight}}
+  Key takeaway: Always validate user input before processing.
+  {{/highlight}}
+
+BAD:
+  The {{@highlight}}important{{/highlight}} part   <- must be block level
+
+---
+
+## Unsupported Patterns
+
+These patterns will cause errors or unexpected output:
+
+### Inline Directives
+Directives cannot appear inline within text.
+
+BAD:
+  The total is {{@highlight}}$500{{/highlight}} due today.
+
+GOOD:
+  {{@highlight}}
+  The total is $500 due today.
+  {{/highlight}}
+
+### Unknown Directives
+Only use documented directives. Unknown directives cause parse errors.
+
+BAD:
+  {{@custom}}
+  {{@sidebar}}
+  {{@footer}}
+
+### Raw CSS
+CSS is not supported. Use Markdown and directives for formatting.
+
+BAD:
+  <style>
+  h1 { color: red; }
+  </style>
+
+  <div style="color: blue">Text</div>
+
+### Raw HTML (Limited)
+Basic HTML may work but is not guaranteed. Prefer Markdown.
+
+BAD:
+  <table><tr><td>Cell</td></tr></table>
+
+GOOD:
+  | Header |
+  |--------|
+  | Cell   |
+
+### Template Logic
+Complex logic, filters, and macros are not supported.
+
+BAD:
+  {{ price | currency }}
+  {{ name | uppercase }}
+  {% if condition %}
+  {% macro button() %}
+
+---
+
+## Worked Examples
+
+### Example 1: Invoice
+
+Template (invoice.md):
+```
+# Invoice
+
+**Invoice Number:** {{ invoice_number }}
+**Date:** {{ date }}
+
+---
+
+## Bill To
+
+{{ client.name }}
+{{ client.address.street }}
+{{ client.address.city }}, {{ client.address.state }} {{ client.address.zip }}
+
+---
+
+## Line Items
+
+| Description | Quantity | Unit Price | Total |
+|-------------|----------|------------|-------|
+{{#items}}
+| {{ description }} | {{ quantity }} | ${{ unit_price }} | ${{ total }} |
+{{/items}}
+
+---
+
+**Subtotal:** ${{ subtotal }}
+**Tax ({{ tax_rate }}%):** ${{ tax_amount }}
+**Total Due:** ${{ total_due }}
+
+{{@note}}
+Payment is due within {{ payment_terms }} days.
+{{/note}}
+
+{{#notes}}
+
+---
+
+## Notes
+
+{{ . }}
+{{/notes}}
+```
+
+Data (invoice.json):
+```json
+{
+  "invoice_number": "INV-2024-001",
+  "date": "2024-03-15",
+  "client": {
+    "name": "Acme Corporation",
+    "address": {
+      "street": "123 Business Ave",
+      "city": "San Francisco",
+      "state": "CA",
+      "zip": "94102"
+    }
+  },
+  "items": [
+    { "description": "Consulting Services", "quantity": "10", "unit_price": "150.00", "total": "1500.00" },
+    { "description": "Development Work", "quantity": "20", "unit_price": "125.00", "total": "2500.00" }
+  ],
+  "subtotal": "4000.00",
+  "tax_rate": "8.5",
+  "tax_amount": "340.00",
+  "total_due": "4340.00",
+  "payment_terms": "30",
+  "notes": "Thank you for your business!"
+}
+```
+
+Command:
+```
+mdpress render invoice.md --data invoice.json --template invoice
+```
+
+---
+
+### Example 2: Technical Report
+
+Template (report.md):
+```
+# {{ title }}
+
+**Author:** {{ author }}
+**Date:** {{ date }}
+**Version:** {{ version }}
+
+{{@toc}}
+
+{{@pagebreak}}
+
+## Executive Summary
+
+{{ executive_summary }}
+
+{{@highlight}}
+{{ key_finding }}
+{{/highlight}}
+
+{{@pagebreak}}
+
+## Introduction
+
+{{ introduction }}
+
+## Methodology
+
+{{ methodology }}
+
+{{#methodology_steps}}
+1. {{ . }}
+{{/methodology_steps}}
+
+## Results
+
+{{ results_overview }}
+
+{{@warning}}
+{{ limitations }}
+{{/warning}}
+
+### Data Analysis
+
+{{#data_points}}
+- **{{ label }}:** {{ value }} ({{ interpretation }})
+{{/data_points}}
+
+{{@pagebreak}}
+
+## Conclusions
+
+{{ conclusions }}
+
+## Recommendations
+
+{{#recommendations}}
+- {{ . }}
+{{/recommendations}}
+
+{{@note}}
+For questions about this report, contact {{ contact_email }}.
+{{/note}}
+```
+
+Data (report.yaml):
+```yaml
+title: "Q1 2024 Performance Analysis"
+author: "Data Analytics Team"
+date: "2024-04-01"
+version: "1.0"
+
+executive_summary: |
+  This report analyzes Q1 2024 performance metrics across all departments.
+  Overall performance exceeded targets by 12%.
+
+key_finding: "Revenue growth of 23% represents the strongest Q1 in company history."
+
+introduction: |
+  This quarterly analysis examines key performance indicators across
+  sales, marketing, and operations departments.
+
+methodology: "Data was collected from internal systems and validated against financial records."
+
+methodology_steps:
+  - "Extracted data from CRM and ERP systems"
+  - "Normalized data formats across sources"
+  - "Applied statistical analysis"
+  - "Validated findings with department heads"
+
+results_overview: "All departments met or exceeded their quarterly targets."
+
+limitations: |
+  Note: Marketing data from January 1-15 was estimated due to a system migration.
+
+data_points:
+  - label: "Sales Revenue"
+    value: "$2.4M"
+    interpretation: "+23% YoY"
+  - label: "Customer Acquisition"
+    value: "847"
+    interpretation: "+15% vs target"
+  - label: "Customer Retention"
+    value: "94%"
+    interpretation: "Above industry average"
+
+conclusions: |
+  Q1 2024 demonstrated strong performance across all measured dimensions.
+  The sales team particularly excelled in enterprise account growth.
+
+recommendations:
+  - "Increase investment in enterprise sales team"
+  - "Expand marketing automation capabilities"
+  - "Implement customer success program"
+
+contact_email: "analytics@company.com"
+```
+
+---
+
+### Example 3: Agent-Generated Report
+
+This example shows how an AI agent might generate an mdpress document.
+
+Template (agent-report.md):
+```
+# {{ report_type }}: {{ subject }}
+
+**Generated:** {{ timestamp }}
+**Agent:** {{ agent_name }}
+**Confidence:** {{ confidence_level }}
+
+{{@toc}}
+
+{{@pagebreak}}
+
+## Summary
+
+{{ summary }}
+
+{{#high_priority}}
+{{@warning}}
+**High Priority Items Detected**
+
+{{#items}}
+- {{ . }}
+{{/items}}
+{{/high_priority}}
+
+## Analysis
+
+{{#sections}}
+### {{ title }}
+
+{{ content }}
+
+{{#findings}}
+{{@note}}
+**Finding:** {{ description }}
+**Impact:** {{ impact }}
+**Recommendation:** {{ recommendation }}
+{{/note}}
+{{/findings}}
+
+{{/sections}}
+
+{{@pagebreak}}
+
+## Appendix
+
+### Data Sources
+
+{{#data_sources}}
+- {{ name }}: {{ description }}
+{{/data_sources}}
+
+### Methodology Notes
+
+{{ methodology_notes }}
+
+{{^reviewed}}
+{{@warning}}
+This report has not been reviewed by a human analyst.
+{{/warning}}
+{{/reviewed}}
+
+---
+
+*Report generated automatically by {{ agent_name }}*
+```
+
+Data (agent-report.json):
+```json
+{
+  "report_type": "Security Audit",
+  "subject": "Web Application Assessment",
+  "timestamp": "2024-03-20T14:32:00Z",
+  "agent_name": "SecurityBot v2.1",
+  "confidence_level": "High (94%)",
+  "summary": "Completed security assessment of the production web application. Identified 3 issues requiring attention, with 1 high-priority vulnerability.",
+  "high_priority": {
+    "items": [
+      "SQL injection vulnerability in /api/search endpoint",
+      "Exposed debug endpoint in production"
+    ]
+  },
+  "sections": [
+    {
+      "title": "Authentication",
+      "content": "Authentication mechanisms were tested for common vulnerabilities.",
+      "findings": [
+        {
+          "description": "Session tokens use secure random generation",
+          "impact": "Positive - reduces session hijacking risk",
+          "recommendation": "No action required"
+        }
+      ]
+    },
+    {
+      "title": "Input Validation",
+      "content": "All user input endpoints were tested for injection vulnerabilities.",
+      "findings": [
+        {
+          "description": "SQL injection in search endpoint",
+          "impact": "Critical - potential data breach",
+          "recommendation": "Implement parameterized queries immediately"
+        }
+      ]
+    }
+  ],
+  "data_sources": [
+    { "name": "OWASP ZAP", "description": "Automated vulnerability scanner" },
+    { "name": "Custom Scripts", "description": "Manual testing procedures" }
+  ],
+  "methodology_notes": "Testing followed OWASP Testing Guide v4.2 methodology.",
+  "reviewed": false
+}
+```
+
+---
+
+## Agent Instructions
+
+When generating mdpress-compatible Markdown:
+
+### DO
+
+1. **Use standard Markdown first** - Headers, lists, tables, bold, italic all work as expected
+2. **Place directives on their own lines** - Never inline
+3. **Use semantic directives appropriately** - {{@note}} for tips, {{@warning}} for alerts
+4. **Structure data properly** - Flat keys for simple values, nested objects for related data
+5. **Test variable names** - Ensure all {{ variables }} have corresponding data keys
+6. **Include page breaks** - Use {{@pagebreak}} between major sections for longer documents
+
+### DON'T
+
+1. **Don't use inline directives** - `The {{@highlight}}total{{/highlight}}` will fail
+2. **Don't invent directives** - Only use documented ones
+3. **Don't use complex templating** - No filters, macros, or logic operators
+4. **Don't include raw CSS** - Styling comes from templates
+5. **Don't assume HTML works** - Stick to Markdown
+
+### Variable Data Best Practices
+
+1. **Use descriptive keys** - `invoice_number` not `num`
+2. **Keep nesting shallow** - 2-3 levels maximum
+3. **Use arrays for repetition** - Not numbered keys like `item1`, `item2`
+4. **Provide all referenced variables** - Missing variables cause errors
+
+### Template Structure
+
+Recommended document structure:
+```
+# Title with {{ variable }}
+
+Metadata block (date, author, etc.)
+
+{{@toc}}            <- if document has multiple sections
+
+{{@pagebreak}}      <- start content on fresh page
+
+## Section 1
+
+Content...
+
+{{@pagebreak}}      <- between major sections
+
+## Section 2
+
+Content...
+```
+
+---
+
+## MCP Tool Integration
+
+<!-- TODO: MDP-65 - Add MCP tool documentation -->
+
+MCP (Model Context Protocol) tool integration is planned for a future release. This will enable:
+
+- Direct rendering from AI assistants
+- Template discovery and selection
+- Data validation before rendering
+- Real-time preview capabilities
+
+Check back for updates or see the project repository for current status.
+
+---
+
+## Quick Reference Card
+
+| Syntax | Purpose | Type |
+|--------|---------|------|
+| `{{ var }}` | Variable interpolation | Variable |
+| `{{ obj.key }}` | Nested access | Variable |
+| `{{#arr}}...{{/arr}}` | Loop over array | Variable |
+| `{{#bool}}...{{/bool}}` | Conditional | Variable |
+| `{{^bool}}...{{/bool}}` | Inverted conditional | Variable |
+| `{{{ var }}}` | Unescaped output | Variable |
+| `{{@pagebreak}}` | Page break | Directive |
+| `{{@toc}}` | Table of contents | Directive |
+| `{{@columns}}...{{/columns}}` | Multi-column | Directive |
+| `{{@note}}...{{/note}}` | Note callout | Directive |
+| `{{@warning}}...{{/warning}}` | Warning callout | Directive |
+| `{{@highlight}}...{{/highlight}}` | Emphasis block | Directive |
+
+---
+
+*This reference is designed for consumption by language models. For human documentation, see README.md.*
