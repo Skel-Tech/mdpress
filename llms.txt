@@ -1,0 +1,51 @@
+# mdpress - LLM Quick Reference
+
+> Turn Markdown and AI output into branded PDFs
+
+## Syntax Overview
+
+Variables (Pro feature, requires --data flag):
+  {{ variable }}           Basic interpolation
+  {{ nested.path }}        Nested object access
+  {{#items}}...{{/items}}  Loops/sections
+  {{^cond}}...{{/cond}}    Inverted conditionals
+
+Directives:
+  {{@pagebreak}}                    Force page break
+  {{@columns}}...{{/columns}}       Multi-column layout
+  {{@toc}}                          Table of contents
+  {{@note}}...{{/note}}             Note callout box
+  {{@warning}}...{{/warning}}       Warning callout box
+  {{@highlight}}...{{/highlight}}   Highlighted section
+
+## Authoring Rules
+
+1. Prefer standard Markdown for all formatting
+2. Place directives on their own line (never inline)
+3. Use variables only with --data flag and Pro license
+4. Unknown directives cause errors - use only documented ones
+
+## Examples
+
+Good:
+  # Invoice for {{ client.name }}
+
+  {{@note}}
+  Payment due within 30 days.
+  {{/note}}
+
+  {{@pagebreak}}
+
+  ## Line Items
+  {{#items}}
+  - {{ description }}: ${{ amount }}
+  {{/items}}
+
+Bad:
+  Total: {{@highlight}}$500{{/highlight}}  <- inline directive
+  {{@custom}}                               <- unknown directive
+  <style>body{color:red}</style>            <- raw CSS unsupported
+
+## Full Reference
+
+See /llms-full.txt for complete directive reference, worked examples, and agent instructions.
