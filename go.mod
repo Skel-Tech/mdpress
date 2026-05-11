@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/cbroglie/mustache v1.4.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
-	github.com/skel-tech/mdpress-core v0.0.0-20260430070126-b20e4f7570de
+	github.com/skel-tech/mdpress-core v0.0.0-20260511100902-dd42c236d8b0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	go.yaml.in/yaml/v3 v3.0.4
